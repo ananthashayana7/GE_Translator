@@ -1,0 +1,59 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f1f5f9;
+}
+
+.app {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 24px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #64748b;
+  margin-bottom: 20px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 14px;
+  margin-bottom: 16px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  resize: vertical;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+.footer {
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 14px;
+}
