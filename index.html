@@ -4,40 +4,42 @@
   <meta charset="UTF-8" />
   <title>DE → EN Translator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
 
-  <!-- File parsing libraries (FREE, CDN) -->
+  <!-- File + download libs -->
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-  <!-- Download libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 </head>
+
 <body>
+  <div class="container">
+    <div class="card">
+      <h1>DE → EN</h1>
 
-<div class="app">
-  <h1>DE → EN Translator</h1>
-  <p class="subtitle">German to English (Free & No Login)</p>
+      <input type="file" id="fileInput" accept=".txt,.docx,.pdf" />
 
-  <input type="file" id="fileInput" accept=".txt,.docx,.pdf" />
+      <textarea id="inputText" placeholder="Paste German text here…"></textarea>
 
-  <textarea id="inputText"
-    placeholder="Paste German text or upload a document..."></textarea>
+      <button id="translateBtn">Translate</button>
 
-  <button id="translateBtn">Translate</button>
+      <textarea id="outputText" placeholder="English translation…" readonly></textarea>
 
-  <textarea id="outputText"
-    placeholder="English translation will appear here..."
-    readonly></textarea>
-
-  <div class="downloads">
-    <button id="downloadTxt">Download TXT</button>
-    <button id="downloadDocx">Download DOCX</button>
-    <button id="downloadPdf">Download PDF</button>
+      <div class="downloads">
+        <button id="downloadTxt">TXT</button>
+        <button id="downloadDocx">DOCX</button>
+        <button id="downloadPdf">PDF</button>
+      </div>
+    </div>
   </div>
-</div>
 
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
