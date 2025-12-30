@@ -8,7 +8,7 @@ The application runs entirely on the client side, requires **no API keys**, **no
 
 ## ✨ Features
 
-- 🇩🇪 → 🇬🇧 German to English translation
+- 🇩🇪 → En German to English translation
 - 📝 Paste text directly into the editor
 - 📄 Upload documents:
   - `.txt`
