@@ -10,31 +10,22 @@ translateBtn.addEventListener("click", async () => {
   translateBtn.disabled = true;
 
   try {
-    // LibreTranslate request payload
-    const payload = {
-      q: text,
-      source: "de",
-      target: "en",
-      format: "text"
-    };
+    const url =
+      "https://api.mymemory.translated.net/get" +
+      "?q=" + encodeURIComponent(text) +
+      "&langpair=de|en";
 
-    // Wrap request using AllOrigins proxy (CORS-safe)
-    const proxyUrl =
-      "https://api.allorigins.win/raw?url=" +
-      encodeURIComponent("https://translate.argosopentech.com/translate");
-
-    const response = await fetch(proxyUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
+    const response = await fetch(url);
     const data = await response.json();
-    outputText.value = data.translatedText || "Translation failed.";
 
+    if (data?.responseData?.translatedText) {
+      outputText.value = data.responseData.translatedText;
+    } else {
+      outputText.value = "Translation failed.";
+    }
   } catch (err) {
     outputText.value =
-      "Translation service unavailable. Please try again later.";
+      "Translation service unavailable. Please try again.";
   } finally {
     translateBtn.disabled = false;
   }
