@@ -4,42 +4,53 @@
   <meta charset="UTF-8" />
   <title>DE → EN Translator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-
-  <!-- File + download libs -->
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 </head>
-
 <body>
+  <div class="bg-pattern"></div>
   <div class="container">
     <div class="card">
-      <h1>DE → EN</h1>
-
-      <input type="file" id="fileInput" accept=".txt,.docx,.pdf" />
-
-      <textarea id="inputText" placeholder="Paste German text here…"></textarea>
-
-      <button id="translateBtn">Translate</button>
-
-      <textarea id="outputText" placeholder="English translation…" readonly></textarea>
-
+      <div class="header">
+        <h1>DE → EN</h1>
+        <p class="subtitle">German to English Translation</p>
+      </div>
+      
+      <div class="file-upload-wrapper">
+        <label for="fileInput" class="file-upload-label">
+          <span class="upload-icon">📄</span>
+          <span>Upload Document (TXT, DOCX, PDF)</span>
+        </label>
+        <input type="file" id="fileInput" accept=".txt,.docx,.pdf" />
+      </div>
+      
+      <div class="textarea-wrapper">
+        <label class="textarea-label">German Text</label>
+        <textarea id="inputText" placeholder="Paste your German text here…"></textarea>
+      </div>
+      
+      <button class="btn-primary" id="translateBtn">
+        <span>Translate Now</span>
+      </button>
+      
+      <div class="textarea-wrapper">
+        <label class="textarea-label">English Translation</label>
+        <textarea id="outputText" placeholder="Your translation will appear here…" readonly></textarea>
+      </div>
+      
       <div class="downloads">
-        <button id="downloadTxt">TXT</button>
-        <button id="downloadDocx">DOCX</button>
-        <button id="downloadPdf">PDF</button>
+        <button class="download-btn" id="downloadTxt">TXT</button>
+        <button class="download-btn" id="downloadDocx">DOCX</button>
+        <button class="download-btn" id="downloadPdf">PDF</button>
       </div>
     </div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
