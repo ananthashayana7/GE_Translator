@@ -41,7 +41,7 @@ No backend server is required.
 
 ```text
 .
-├── index.html     # Main UI
-├── style.css      # Styling (light, premium theme)
-├── script.js      # Translation logic, file handling, downloads
+├── index.html     
+├── style.css    
+├── script.js     
 └── README.md
