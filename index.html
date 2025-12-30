@@ -5,27 +5,39 @@
   <title>DE → EN Translator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
+
+  <!-- File parsing libraries (FREE, CDN) -->
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Download libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 </head>
 <body>
 
-  <div class="app">
-    <h1>DE → EN Translator</h1>
-    <p class="subtitle">German to English (Free & No Login)</p>
+<div class="app">
+  <h1>DE → EN Translator</h1>
+  <p class="subtitle">German to English (Free & No Login)</p>
 
-    <textarea
-      id="inputText"
-      placeholder="Geben Sie hier deutschen Text ein..."
-    ></textarea>
+  <input type="file" id="fileInput" accept=".txt,.docx,.pdf" />
 
-    <button id="translateBtn">Translate</button>
+  <textarea id="inputText"
+    placeholder="Paste German text or upload a document..."></textarea>
 
-    <textarea
-      id="outputText"
-      placeholder="English translation will appear here..."
-      readonly
-    ></textarea>
+  <button id="translateBtn">Translate</button>
+
+  <textarea id="outputText"
+    placeholder="English translation will appear here..."
+    readonly></textarea>
+
+  <div class="downloads">
+    <button id="downloadTxt">Download TXT</button>
+    <button id="downloadDocx">Download DOCX</button>
+    <button id="downloadPdf">Download PDF</button>
   </div>
+</div>
 
-  <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
