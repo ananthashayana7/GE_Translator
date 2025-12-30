@@ -12,7 +12,7 @@ inputText.addEventListener("input", () => {
   }
 });
 
-function splitIntoChunks(text, maxLength = 400) {
+function splitIntoChunks(text, maxLength = 500) {
   const chunks = [];
   let start = 0;
   while (start < text.length) {
@@ -27,27 +27,94 @@ function splitIntoChunks(text, maxLength = 400) {
   return chunks;
 }
 
+// Multiple translation API endpoints with fallback
+const translationAPIs = [
+  {
+    name: "LibreTranslate",
+    translate: async (text) => {
+      const response = await fetch("https://libretranslate.de/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          q: text,
+          source: "de",
+          target: "en",
+          format: "text"
+        })
+      });
+      const data = await response.json();
+      if (data.translatedText) return data.translatedText;
+      throw new Error("Translation failed");
+    }
+  },
+  {
+    name: "MyMemory",
+    translate: async (text) => {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=de|en`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.responseData && data.responseData.translatedText) {
+        return data.responseData.translatedText;
+      }
+      throw new Error("Translation failed");
+    }
+  },
+  {
+    name: "Lingva",
+    translate: async (text) => {
+      const response = await fetch(`https://lingva.ml/api/v1/de/en/${encodeURIComponent(text)}`);
+      const data = await response.json();
+      if (data.translation) return data.translation;
+      throw new Error("Translation failed");
+    }
+  }
+];
+
+async function translateWithFallback(text) {
+  for (let api of translationAPIs) {
+    try {
+      return await api.translate(text);
+    } catch (error) {
+      console.log(`${api.name} failed, trying next...`);
+      continue;
+    }
+  }
+  throw new Error("All translation services failed. Please try again later.");
+}
+
 async function translateUnlimited(text) {
   const chunks = splitIntoChunks(text);
   let translated = [];
+  
   for (let i = 0; i < chunks.length; i++) {
     outputText.value = `Translating ${i + 1} / ${chunks.length}…`;
-    const url =
-      "https://api.mymemory.translated.net/get" +
-      "?q=" + encodeURIComponent(chunks[i]) +
-      "&langpair=de|en";
-    const response = await fetch(url);
-    const data = await response.json();
-    translated.push(data.responseData.translatedText);
-    await new Promise(r => setTimeout(r, 250));
+    try {
+      const result = await translateWithFallback(chunks[i]);
+      translated.push(result);
+      await new Promise(r => setTimeout(r, 200));
+    } catch (error) {
+      outputText.value = `Error: ${error.message}`;
+      return;
+    }
   }
-  return translated.join("");
+  
+  return translated.join(" ");
 }
 
 translateBtn.onclick = async () => {
   if (!inputText.value.trim()) return;
-  outputText.value = "Preparing translation…";
-  outputText.value = await translateUnlimited(inputText.value);
+  translateBtn.disabled = true;
+  translateBtn.innerHTML = "<span>Translating...</span>";
+  
+  try {
+    outputText.value = "Preparing translation…";
+    outputText.value = await translateUnlimited(inputText.value);
+  } catch (error) {
+    outputText.value = "Translation error. Please try again.";
+  } finally {
+    translateBtn.disabled = false;
+    translateBtn.innerHTML = "<span>Translate Now</span>";
+  }
 };
 
 fileInput.onchange = async e => {
