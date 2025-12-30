@@ -5,8 +5,8 @@
 body {
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
-  background: radial-gradient(circle at top, #0f172a, #020617);
-  color: #e5e7eb;
+  background: #f5f7fb; /* soft light background */
+  color: #1f2937;
 }
 
 .container {
@@ -14,67 +14,80 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 40px 20px;
 }
 
 .card {
   width: 100%;
   max-width: 900px;
-  background: rgba(15, 23, 42, 0.9);
-  border-radius: 24px;
+  background: #ffffff;
+  border-radius: 20px;
   padding: 32px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, 0.06),
+    0 4px 10px rgba(0, 0, 0, 0.04);
 }
 
 h1 {
   font-family: Poppins, sans-serif;
-  font-size: 32px;
-  margin-bottom: 20px;
+  font-size: 28px;
+  font-weight: 600;
   text-align: center;
-  letter-spacing: 1px;
+  margin-bottom: 24px;
+  letter-spacing: 0.5px;
 }
 
 input[type="file"] {
   margin-bottom: 14px;
-  color: #94a3b8;
+  font-size: 14px;
+  color: #4b5563;
 }
 
 textarea {
   width: 100%;
   min-height: 170px;
   padding: 16px;
-  border-radius: 16px;
-  border: 1px solid #1e293b;
-  background: #020617;
-  color: #e5e7eb;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #fafafa;
+  color: #111827;
   font-size: 15px;
   line-height: 1.6;
   margin-bottom: 20px;
   resize: vertical;
 }
 
+textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: #ffffff;
+}
+
 textarea::placeholder {
-  color: #64748b;
+  color: #9ca3af;
 }
 
 button {
   width: 100%;
   padding: 14px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  border-radius: 16px;
+  border-radius: 14px;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  background: #6366f1; /* muted indigo */
   color: white;
   margin-bottom: 20px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
 button:hover {
+  background: #4f46e5;
   transform: translateY(-1px);
-  box-shadow: 0 10px 30px rgba(56, 189, 248, 0.4);
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 .downloads {
@@ -84,6 +97,11 @@ button:hover {
 
 .downloads button {
   flex: 1;
-  background: #020617;
-  border: 1px solid #1e293b;
+  background: #f3f4f6;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+}
+
+.downloads button:hover {
+  background: #e5e7eb;
 }
