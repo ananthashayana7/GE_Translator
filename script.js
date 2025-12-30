@@ -29,7 +29,6 @@ function splitIntoChunks(text, maxLength = 500) {
   return chunks;
 }
 
-// Using Google Translate's free API endpoint (no limits, no authentication needed)
 async function translateChunk(text) {
   try {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=de&tl=en&dt=t&q=${encodeURIComponent(text)}`;
@@ -131,16 +130,37 @@ downloadDocx.onclick = async () => {
     alert("No translation to download");
     return;
   }
+  
   try {
+    // Split text into paragraphs
+    const paragraphs = outputText.value.split('\n').filter(p => p.trim());
+    
+    // Create paragraphs for docx
+    const docParagraphs = paragraphs.map(text => 
+      new docx.Paragraph({
+        text: text,
+        spacing: {
+          after: 200
+        }
+      })
+    );
+    
+    // Create document
     const doc = new docx.Document({
       sections: [{
-        children: [new docx.Paragraph(outputText.value)]
+        properties: {},
+        children: docParagraphs
       }]
     });
-    save(await docx.Packer.toBlob(doc), "translation.docx");
+    
+    // Generate and save
+    const blob = await docx.Packer.toBlob(doc);
+    save(blob, "translation.docx");
   } catch (error) {
-    alert("Error creating document");
-    console.error(error);
+    console.error("DOCX Error:", error);
+    alert("Error creating DOCX document. Downloading as TXT instead.");
+    // Fallback to TXT
+    save(new Blob([outputText.value], {type: 'text/plain'}), "translation.txt");
   }
 };
 
@@ -149,14 +169,33 @@ downloadPdf.onclick = () => {
     alert("No translation to download");
     return;
   }
+  
   try {
-    const pdf = new jspdf.jsPDF();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    
+    // Split text to fit page width
     const lines = pdf.splitTextToSize(outputText.value, 180);
-    pdf.text(lines, 15, 15);
+    
+    let y = 15;
+    const pageHeight = pdf.internal.pageSize.height;
+    const lineHeight = 7;
+    
+    lines.forEach(line => {
+      // Check if we need a new page
+      if (y + lineHeight > pageHeight - 20) {
+        pdf.addPage();
+        y = 15;
+      }
+      
+      pdf.text(line, 15, y);
+      y += lineHeight;
+    });
+    
     pdf.save("translation.pdf");
   } catch (error) {
-    alert("Error creating PDF");
-    console.error(error);
+    console.error("PDF Error:", error);
+    alert("Error creating PDF. Please try TXT download instead.");
   }
 };
 
@@ -164,6 +203,8 @@ function save(blob, name) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = name;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
 }
