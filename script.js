@@ -14,30 +14,59 @@ inputText.addEventListener("input", () => {
   }
 });
 
-// Faster translation using chunking
-async function translateFast(text) {
-  const chunks = text.split(/\n{2,}/); // paragraph-based
-  const requests = chunks.map(chunk => {
+// ---------------- CHUNKING LOGIC ----------------
+function splitIntoChunks(text, maxLength = 400) {
+  const chunks = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = start + maxLength;
+
+    // try not to break words
+    if (end < text.length) {
+      const lastSpace = text.lastIndexOf(" ", end);
+      if (lastSpace > start) end = lastSpace;
+    }
+
+    chunks.push(text.slice(start, end));
+    start = end;
+  }
+
+  return chunks;
+}
+
+// ---------------- TRANSLATION ----------------
+async function translateUnlimited(text) {
+  const chunks = splitIntoChunks(text);
+  let translated = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    outputText.value = `Translating ${i + 1} / ${chunks.length}…`;
+
     const url =
       "https://api.mymemory.translated.net/get" +
-      "?q=" + encodeURIComponent(chunk) +
+      "?q=" + encodeURIComponent(chunks[i]) +
       "&langpair=de|en";
-    return fetch(url).then(r => r.json());
-  });
 
-  const results = await Promise.all(requests);
-  return results
-    .map(r => r.responseData.translatedText)
-    .join("\n\n");
+    const response = await fetch(url);
+    const data = await response.json();
+
+    translated.push(data.responseData.translatedText);
+
+    // gentle delay to avoid rate limiting
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  return translated.join("");
 }
 
 translateBtn.onclick = async () => {
   if (!inputText.value.trim()) return;
-  outputText.value = "Translating…";
-  outputText.value = await translateFast(inputText.value);
+  outputText.value = "Preparing translation…";
+  outputText.value = await translateUnlimited(inputText.value);
 };
 
-// File upload
+// ---------------- FILE UPLOAD ----------------
 fileInput.onchange = async e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -47,12 +76,17 @@ fileInput.onchange = async e => {
   }
 
   if (file.name.endsWith(".docx")) {
-    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    const result = await mammoth.extractRawText({
+      arrayBuffer: await file.arrayBuffer()
+    });
     inputText.value = result.value;
   }
 
   if (file.name.endsWith(".pdf")) {
-    const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+    const pdf = await pdfjsLib.getDocument(
+      await file.arrayBuffer()
+    ).promise;
+
     let text = "";
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
@@ -63,8 +97,9 @@ fileInput.onchange = async e => {
   }
 };
 
-// Downloads
-downloadTxt.onclick = () => save(new Blob([outputText.value]), "translation.txt");
+// ---------------- DOWNLOADS ----------------
+downloadTxt.onclick = () =>
+  save(new Blob([outputText.value]), "translation.txt");
 
 downloadDocx.onclick = async () => {
   const doc = new docx.Document({
