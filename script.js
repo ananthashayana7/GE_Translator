@@ -2,209 +2,145 @@ const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
 const translateBtn = document.getElementById("translateBtn");
 const fileInput = document.getElementById("fileInput");
-const downloadTxt = document.getElementById("downloadTxt");
-const downloadDocx = document.getElementById("downloadDocx");
-const downloadPdf = document.getElementById("downloadPdf");
+const progressBar = document.getElementById("progressBar");
+const downloads = document.getElementById("downloads");
+const charCount = document.getElementById("charCount");
+const eta = document.getElementById("eta");
+const domainMode = document.getElementById("domainMode");
 
+const cache = new Map();
+
+// --- Utilities ---
+function splitText(text, max = 400) {
+  const parts = [];
+  let i = 0;
+  while (i < text.length) {
+    let end = i + max;
+    if (end < text.length) {
+      const s = text.lastIndexOf(" ", end);
+      if (s > i) end = s;
+    }
+    parts.push(text.slice(i, end));
+    i = end;
+  }
+  return parts;
+}
+
+function estimateTime(chars) {
+  return Math.ceil(chars / 400) * 0.4;
+}
+
+// --- UI helpers ---
 inputText.addEventListener("input", () => {
+  const len = inputText.value.length;
+  charCount.textContent = `${len} chars`;
+  eta.textContent = `ETA: ${estimateTime(len)}s`;
   if (!inputText.value.trim()) {
     outputText.value = "";
+    downloads.classList.add("hidden");
   }
 });
 
-function splitIntoChunks(text, maxLength = 500) {
-  const chunks = [];
-  let start = 0;
-  while (start < text.length) {
-    let end = start + maxLength;
-    if (end < text.length) {
-      const lastPeriod = text.lastIndexOf(".", end);
-      const lastSpace = text.lastIndexOf(" ", end);
-      const breakPoint = lastPeriod > start ? lastPeriod + 1 : (lastSpace > start ? lastSpace : end);
-      end = breakPoint;
-    }
-    chunks.push(text.slice(start, end).trim());
-    start = end;
-  }
-  return chunks;
-}
-
+// --- Translation ---
 async function translateChunk(text) {
-  try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=de&tl=en&dt=t&q=${encodeURIComponent(text)}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data && data[0]) {
-      return data[0].map(item => item[0]).join('');
-    }
-    throw new Error("Translation failed");
-  } catch (error) {
-    console.error("Translation error:", error);
-    throw error;
-  }
+  if (cache.has(text)) return cache.get(text);
+
+  const hint =
+    domainMode.value === "technical"
+      ? "Use technical terminology."
+      : domainMode.value === "legal"
+      ? "Use formal legal language."
+      : "";
+
+  const url =
+    "https://translate.googleapis.com/translate_a/single?client=gtx&sl=de&tl=en&dt=t&q=" +
+    encodeURIComponent(hint + " " + text);
+
+  const res = await fetch(url);
+  const data = await res.json();
+  const translated = data[0].map(x => x[0]).join("");
+
+  cache.set(text, translated);
+  return translated;
 }
 
-async function translateUnlimited(text) {
-  const chunks = splitIntoChunks(text);
-  let translated = [];
-  
-  for (let i = 0; i < chunks.length; i++) {
-    outputText.value = `Translating part ${i + 1} of ${chunks.length}...`;
-    
-    try {
-      const result = await translateChunk(chunks[i]);
-      translated.push(result);
-      await new Promise(r => setTimeout(r, 300));
-    } catch (error) {
-      outputText.value = `Error translating part ${i + 1}. Please try again.`;
-      throw error;
+async function translateAll(text) {
+  const chunks = splitText(text);
+  const results = [];
+  let completed = 0;
+
+  const workers = 2;
+  const queue = [...chunks];
+
+  async function worker() {
+    while (queue.length) {
+      const chunk = queue.shift();
+      const result = await translateChunk(chunk);
+      results.push(result);
+      completed++;
+      progressBar.style.width = `${(completed / chunks.length) * 100}%`;
     }
   }
-  
-  return translated.join(" ");
+
+  await Promise.all(Array(workers).fill(0).map(worker));
+  return results.join("");
 }
 
 translateBtn.onclick = async () => {
-  if (!inputText.value.trim()) {
-    outputText.value = "Please enter some German text to translate.";
-    return;
-  }
-  
+  if (!inputText.value.trim()) return;
   translateBtn.disabled = true;
-  translateBtn.innerHTML = "<span>Translating...</span>";
-  
-  try {
-    outputText.value = "Starting translation...";
-    const result = await translateUnlimited(inputText.value);
-    outputText.value = result;
-  } catch (error) {
-    outputText.value = "Translation failed. Please check your internet connection and try again.";
-    console.error(error);
-  } finally {
-    translateBtn.disabled = false;
-    translateBtn.innerHTML = "<span>Translate Now</span>";
-  }
+  progressBar.style.width = "0%";
+  outputText.value = "Translating…";
+
+  const result = await translateAll(inputText.value);
+  outputText.value = result;
+  downloads.classList.remove("hidden");
+  translateBtn.disabled = false;
 };
 
+// --- File upload ---
 fileInput.onchange = async e => {
   const file = e.target.files[0];
   if (!file) return;
-  
-  try {
-    if (file.name.endsWith(".txt")) {
-      inputText.value = await file.text();
+
+  if (file.name.endsWith(".txt")) {
+    inputText.value = await file.text();
+  } else if (file.name.endsWith(".docx")) {
+    const r = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    inputText.value = r.value;
+  } else if (file.name.endsWith(".pdf")) {
+    const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const p = await pdf.getPage(i);
+      const c = await p.getTextContent();
+      text += c.items.map(x => x.str).join(" ") + "\n";
     }
-    else if (file.name.endsWith(".docx")) {
-      const result = await mammoth.extractRawText({
-        arrayBuffer: await file.arrayBuffer()
-      });
-      inputText.value = result.value;
-    }
-    else if (file.name.endsWith(".pdf")) {
-      const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
-      let text = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map(item => item.str).join(" ") + "\n";
-      }
-      inputText.value = text;
-    }
-  } catch (error) {
-    alert("Error reading file. Please try again.");
-    console.error(error);
+    inputText.value = text;
   }
 };
 
-downloadTxt.onclick = () => {
-  if (!outputText.value.trim()) {
-    alert("No translation to download");
-    return;
-  }
-  save(new Blob([outputText.value], {type: 'text/plain'}), "translation.txt");
-};
+// --- Downloads ---
+downloadTxt.onclick = () =>
+  save(new Blob([outputText.value]), "translation.txt");
 
 downloadDocx.onclick = async () => {
-  if (!outputText.value.trim()) {
-    alert("No translation to download");
-    return;
-  }
-  
-  try {
-    // Split text into paragraphs
-    const paragraphs = outputText.value.split('\n').filter(p => p.trim());
-    
-    // Create paragraphs for docx
-    const docParagraphs = paragraphs.map(text => 
-      new docx.Paragraph({
-        text: text,
-        spacing: {
-          after: 200
-        }
-      })
-    );
-    
-    // Create document
-    const doc = new docx.Document({
-      sections: [{
-        properties: {},
-        children: docParagraphs
-      }]
-    });
-    
-    // Generate and save
-    const blob = await docx.Packer.toBlob(doc);
-    save(blob, "translation.docx");
-  } catch (error) {
-    console.error("DOCX Error:", error);
-    alert("Error creating DOCX document. Downloading as TXT instead.");
-    // Fallback to TXT
-    save(new Blob([outputText.value], {type: 'text/plain'}), "translation.txt");
-  }
+  const paragraphs = outputText.value.split("\n").map(t => new docx.Paragraph(t));
+  const doc = new docx.Document({ sections: [{ children: paragraphs }] });
+  save(await docx.Packer.toBlob(doc), "translation.docx");
 };
 
 downloadPdf.onclick = () => {
-  if (!outputText.value.trim()) {
-    alert("No translation to download");
-    return;
-  }
-  
-  try {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
-    
-    // Split text to fit page width
-    const lines = pdf.splitTextToSize(outputText.value, 180);
-    
-    let y = 15;
-    const pageHeight = pdf.internal.pageSize.height;
-    const lineHeight = 7;
-    
-    lines.forEach(line => {
-      // Check if we need a new page
-      if (y + lineHeight > pageHeight - 20) {
-        pdf.addPage();
-        y = 15;
-      }
-      
-      pdf.text(line, 15, y);
-      y += lineHeight;
-    });
-    
-    pdf.save("translation.pdf");
-  } catch (error) {
-    console.error("PDF Error:", error);
-    alert("Error creating PDF. Please try TXT download instead.");
-  }
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+  const lines = pdf.splitTextToSize(outputText.value, 180);
+  pdf.text(lines, 10, 10);
+  pdf.save("translation.pdf");
 };
 
 function save(blob, name) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = name;
-  document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
 }
