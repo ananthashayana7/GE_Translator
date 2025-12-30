@@ -7,29 +7,38 @@ const downloadTxt = document.getElementById("downloadTxt");
 const downloadDocx = document.getElementById("downloadDocx");
 const downloadPdf = document.getElementById("downloadPdf");
 
-// ---------------- TRANSLATION ----------------
-async function translate(text) {
-  const url =
-    "https://api.mymemory.translated.net/get" +
-    "?q=" + encodeURIComponent(text) +
-    "&langpair=de|en";
+// Auto-clear output when input is cleared
+inputText.addEventListener("input", () => {
+  if (!inputText.value.trim()) {
+    outputText.value = "";
+  }
+});
 
-  const res = await fetch(url);
-  const data = await res.json();
+// Faster translation using chunking
+async function translateFast(text) {
+  const chunks = text.split(/\n{2,}/); // paragraph-based
+  const requests = chunks.map(chunk => {
+    const url =
+      "https://api.mymemory.translated.net/get" +
+      "?q=" + encodeURIComponent(chunk) +
+      "&langpair=de|en";
+    return fetch(url).then(r => r.json());
+  });
 
-  return data.responseData.translatedText
-    .replace(/\s+/g, " ")
-    .replace(/\.\s*/g, ".\n\n"); // improve readability
+  const results = await Promise.all(requests);
+  return results
+    .map(r => r.responseData.translatedText)
+    .join("\n\n");
 }
 
 translateBtn.onclick = async () => {
   if (!inputText.value.trim()) return;
-  outputText.value = "Translating...";
-  outputText.value = await translate(inputText.value);
+  outputText.value = "Translating…";
+  outputText.value = await translateFast(inputText.value);
 };
 
-// ---------------- FILE UPLOAD ----------------
-fileInput.onchange = async (e) => {
+// File upload
+fileInput.onchange = async e => {
   const file = e.target.files[0];
   if (!file) return;
 
@@ -38,8 +47,7 @@ fileInput.onchange = async (e) => {
   }
 
   if (file.name.endsWith(".docx")) {
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
+    const result = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
     inputText.value = result.value;
   }
 
@@ -55,32 +63,25 @@ fileInput.onchange = async (e) => {
   }
 };
 
-// ---------------- DOWNLOADS ----------------
-downloadTxt.onclick = () => {
-  const blob = new Blob([outputText.value], { type: "text/plain" });
-  save(blob, "translation.txt");
-};
+// Downloads
+downloadTxt.onclick = () => save(new Blob([outputText.value]), "translation.txt");
 
 downloadDocx.onclick = async () => {
   const doc = new docx.Document({
-    sections: [{ children: [
-      new docx.Paragraph(outputText.value)
-    ]}]
+    sections: [{ children: [new docx.Paragraph(outputText.value)] }]
   });
-  const blob = await docx.Packer.toBlob(doc);
-  save(blob, "translation.docx");
+  save(await docx.Packer.toBlob(doc), "translation.docx");
 };
 
 downloadPdf.onclick = () => {
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
+  const pdf = new jspdf.jsPDF();
   pdf.text(outputText.value, 10, 10);
   pdf.save("translation.pdf");
 };
 
-function save(blob, filename) {
+function save(blob, name) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = filename;
+  a.download = name;
   a.click();
 }
