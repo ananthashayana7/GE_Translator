@@ -12,7 +12,7 @@ inputText.addEventListener("input", () => {
   }
 });
 
-function splitIntoChunks(text, maxLength = 4000) {
+function splitIntoChunks(text, maxLength = 500) {
   const chunks = [];
   let start = 0;
   while (start < text.length) {
@@ -29,29 +29,16 @@ function splitIntoChunks(text, maxLength = 4000) {
   return chunks;
 }
 
-async function translateWithClaude(text) {
+// Using Google Translate's free API endpoint (no limits, no authentication needed)
+async function translateChunk(text) {
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{
-          role: "user",
-          content: `Translate the following German text to English. Provide only the translation without any explanations or additional text:\n\n${text}`
-        }]
-      })
-    });
-    
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=de&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+    const response = await fetch(url);
     const data = await response.json();
     
-    if (data.content && data.content[0] && data.content[0].text) {
-      return data.content[0].text.trim();
+    if (data && data[0]) {
+      return data[0].map(item => item[0]).join('');
     }
-    
     throw new Error("Translation failed");
   } catch (error) {
     console.error("Translation error:", error);
@@ -67,15 +54,16 @@ async function translateUnlimited(text) {
     outputText.value = `Translating part ${i + 1} of ${chunks.length}...`;
     
     try {
-      const result = await translateWithClaude(chunks[i]);
+      const result = await translateChunk(chunks[i]);
       translated.push(result);
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 300));
     } catch (error) {
-      throw new Error(`Translation failed at part ${i + 1}`);
+      outputText.value = `Error translating part ${i + 1}. Please try again.`;
+      throw error;
     }
   }
   
-  return translated.join("\n\n");
+  return translated.join(" ");
 }
 
 translateBtn.onclick = async () => {
@@ -92,7 +80,7 @@ translateBtn.onclick = async () => {
     const result = await translateUnlimited(inputText.value);
     outputText.value = result;
   } catch (error) {
-    outputText.value = "Translation completed with high accuracy. Please review the output.";
+    outputText.value = "Translation failed. Please check your internet connection and try again.";
     console.error(error);
   } finally {
     translateBtn.disabled = false;
@@ -146,9 +134,7 @@ downloadDocx.onclick = async () => {
   try {
     const doc = new docx.Document({
       sections: [{
-        children: outputText.value.split('\n\n').map(para => 
-          new docx.Paragraph(para)
-        )
+        children: [new docx.Paragraph(outputText.value)]
       }]
     });
     save(await docx.Packer.toBlob(doc), "translation.docx");
