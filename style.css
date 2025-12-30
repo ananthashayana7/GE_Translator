@@ -1,9 +1,11 @@
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
-  background: #f4f6fa;
+  background: #f5f7fb;
   color: #111827;
 }
 
@@ -90,6 +92,12 @@ textarea:focus {
   border-radius: 2px;
   margin: 16px 0;
   overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.progress.active {
+  opacity: 1;
 }
 
 .progress div {
