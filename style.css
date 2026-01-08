@@ -38,6 +38,7 @@ h1 {
   display: flex;
   gap: 12px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .controls select,
@@ -57,6 +58,27 @@ h1 {
   border: none;
 }
 
+.controls button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.direction-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.direction-toggle:hover {
+  background: #f9fafb;
+}
+
 .editor {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -68,6 +90,8 @@ label {
   font-weight: 700;
   text-transform: uppercase;
   color: #6b7280;
+  display: block;
+  margin-bottom: 8px;
 }
 
 textarea {
@@ -121,6 +145,10 @@ textarea:focus {
 }
 
 .hidden {
+  display: none;
+}
+
+.upload input {
   display: none;
 }
 
