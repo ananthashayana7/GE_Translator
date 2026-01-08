@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ---------- helpers ---------- */
 
   function estimateTime(chars) {
-    return Math.ceil(chars / 2000) * 2;
+    return Math.ceil(chars / 500) * 1;
   }
 
   function resetUIState() {
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fileInput.value = "";
   }
 
-  function splitText(text, max = 2000) {
+  function splitText(text, max = 500) {
     const parts = [];
     let i = 0;
     while (i < text.length) {
@@ -94,42 +94,24 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ---------- translation ---------- */
 
   async function translateChunk(text) {
-    const domainHint = {
-      technical: " Use precise technical terminology.",
-      legal: " Use formal legal language and appropriate terminology.",
-      general: ""
-    }[domainMode.value];
-
     const [sourceLang, targetLang] = currentDirection.split("-");
-    const sourceName = sourceLang === "de" ? "German" : "English";
-    const targetName = targetLang === "de" ? "German" : "English";
+    
+    // MyMemory Translation API (Free, No API Key Required)
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
 
-    console.log(`Translating from ${sourceName} to ${targetName}`);
-
-    const prompt = `Translate the following ${sourceName} text to ${targetName}.${domainHint} Provide ONLY the translation, no explanations or additional text.
-
-${text}`;
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        messages: [
-          { role: "user", content: prompt }
-        ],
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.responseStatus === 200 || data.responseData) {
+        return data.responseData.translatedText;
+      } else {
+        throw new Error("Translation failed");
+      }
+    } catch (error) {
+      console.error("Translation error:", error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data.content[0].text;
   }
 
   async function translateAll(text) {
@@ -140,12 +122,21 @@ ${text}`;
     progressContainer.classList.add("active");
 
     for (const chunk of chunks) {
-      const result = await translateChunk(chunk);
-      results.push(result);
-      completed++;
-      requestAnimationFrame(() => {
-        progressBar.style.width = `${Math.round((completed / chunks.length) * 100)}%`;
-      });
+      try {
+        const result = await translateChunk(chunk);
+        results.push(result);
+        completed++;
+        requestAnimationFrame(() => {
+          progressBar.style.width = `${Math.round((completed / chunks.length) * 100)}%`;
+        });
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error("Error translating chunk:", error);
+        results.push("[Translation error]");
+        completed++;
+      }
     }
 
     return results.join(" ");
@@ -168,7 +159,7 @@ ${text}`;
       downloads.classList.remove("hidden");
       console.log("Translation completed successfully");
     } catch (error) {
-      outputText.value = "Translation failed. Please try again.";
+      outputText.value = "Translation failed. Please check your internet connection and try again.";
       console.error("Translation error:", error);
     }
 
