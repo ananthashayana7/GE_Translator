@@ -11,12 +11,20 @@ const charCount = document.getElementById("charCount");
 const eta = document.getElementById("eta");
 const domainMode = document.getElementById("domainMode");
 
-const cache = new Map();
+const directionToggle = document.getElementById("directionToggle");
+const directionLabel = document.getElementById("directionLabel");
+const sourceLabel = document.getElementById("sourceLabel");
+const targetLabel = document.getElementById("targetLabel");
+
+const downloadTxt = document.getElementById("downloadTxt");
+const downloadPdf = document.getElementById("downloadPdf");
+
+let currentDirection = "de-en"; // "de-en" or "en-de"
 
 /* ---------- helpers ---------- */
 
 function estimateTime(chars) {
-  return Math.ceil(chars / 400) * 0.4;
+  return Math.ceil(chars / 2000) * 2;
 }
 
 function resetUIState() {
@@ -24,12 +32,12 @@ function resetUIState() {
   progressBar.style.width = "0%";
   progressContainer.classList.remove("active");
   downloads.classList.add("hidden");
-  eta.textContent = "ETA: –";
+  eta.textContent = "ETA: —";
   charCount.textContent = "0 chars";
   fileInput.value = "";
 }
 
-function splitText(text, max = 400) {
+function splitText(text, max = 2000) {
   const parts = [];
   let i = 0;
   while (i < text.length) {
@@ -44,6 +52,25 @@ function splitText(text, max = 400) {
   return parts;
 }
 
+/* ---------- direction toggle ---------- */
+
+directionToggle.onclick = () => {
+  if (currentDirection === "de-en") {
+    currentDirection = "en-de";
+    directionLabel.textContent = "EN → DE";
+    sourceLabel.textContent = "English";
+    targetLabel.textContent = "German";
+    inputText.placeholder = "Paste English text here…";
+  } else {
+    currentDirection = "de-en";
+    directionLabel.textContent = "DE → EN";
+    sourceLabel.textContent = "German";
+    targetLabel.textContent = "English";
+    inputText.placeholder = "Paste German text here…";
+  }
+  resetUIState();
+};
+
 /* ---------- input handling ---------- */
 
 inputText.addEventListener("input", () => {
@@ -51,7 +78,7 @@ inputText.addEventListener("input", () => {
   const len = text.length;
 
   charCount.textContent = `${len} chars`;
-  eta.textContent = len ? `ETA: ${estimateTime(len)}s` : "ETA: –";
+  eta.textContent = len ? `ETA: ${estimateTime(len)}s` : "ETA: —";
 
   if (!text) {
     resetUIState();
@@ -61,25 +88,36 @@ inputText.addEventListener("input", () => {
 /* ---------- translation ---------- */
 
 async function translateChunk(text) {
-  if (cache.has(text)) return cache.get(text);
+  const domainHint = {
+    technical: " Use precise technical terminology.",
+    legal: " Use formal legal language and appropriate terminology.",
+    general: ""
+  }[domainMode.value];
 
-  const hint =
-    domainMode.value === "technical"
-      ? "Use technical terminology."
-      : domainMode.value === "legal"
-      ? "Use formal legal language."
-      : "";
+  const [sourceLang, targetLang] = currentDirection.split("-");
+  const sourceName = sourceLang === "de" ? "German" : "English";
+  const targetName = targetLang === "de" ? "German" : "English";
 
-  const url =
-    "https://translate.googleapis.com/translate_a/single?client=gtx&sl=de&tl=en&dt=t&q=" +
-    encodeURIComponent(hint + " " + text);
+  const prompt = `Translate the following ${sourceName} text to ${targetName}.${domainHint} Provide ONLY the translation, no explanations or additional text.
 
-  const res = await fetch(url);
-  const data = await res.json();
-  const translated = data[0].map(x => x[0]).join("");
+${text}`;
 
-  cache.set(text, translated);
-  return translated;
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      messages: [
+        { role: "user", content: prompt }
+      ],
+    })
+  });
+
+  const data = await response.json();
+  return data.content[0].text;
 }
 
 async function translateAll(text) {
@@ -98,7 +136,7 @@ async function translateAll(text) {
     });
   }
 
-  return results.join("");
+  return results.join(" ");
 }
 
 translateBtn.onclick = async () => {
@@ -110,10 +148,15 @@ translateBtn.onclick = async () => {
   downloads.classList.add("hidden");
   outputText.value = "Translating…";
 
-  const result = await translateAll(inputText.value);
-  outputText.value = result;
+  try {
+    const result = await translateAll(inputText.value);
+    outputText.value = result;
+    downloads.classList.remove("hidden");
+  } catch (error) {
+    outputText.value = "Translation failed. Please try again.";
+    console.error(error);
+  }
 
-  downloads.classList.remove("hidden");
   translateBtn.disabled = false;
 };
 
@@ -125,39 +168,37 @@ fileInput.onchange = async e => {
 
   let text = "";
 
-  if (file.name.endsWith(".txt")) {
-    text = await file.text();
-  } else if (file.name.endsWith(".docx")) {
-    const r = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
-    text = r.value;
-  } else if (file.name.endsWith(".pdf")) {
-    const pdf = await pdfjsLib.getDocument(await file.arrayBuffer()).promise;
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map(x => x.str).join(" ") + "\n";
+  try {
+    if (file.name.endsWith(".txt")) {
+      text = await file.text();
+    } else if (file.name.endsWith(".pdf")) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(x => x.str).join(" ") + "\n";
+      }
     }
+
+    inputText.value = text;
+    charCount.textContent = `${text.length} chars`;
+    eta.textContent = text.trim() ? `ETA: ${estimateTime(text.length)}s` : "ETA: —";
+
+    outputText.value = "";
+    progressBar.style.width = "0%";
+    progressContainer.classList.remove("active");
+    downloads.classList.add("hidden");
+  } catch (error) {
+    alert("Error reading file. Please try again.");
+    console.error(error);
   }
-
-  inputText.value = text;
-  charCount.textContent = `${text.length} chars`;
-  eta.textContent = text.trim() ? `ETA: ${estimateTime(text.length)}s` : "ETA: –";
-
-  outputText.value = "";
-  progressBar.style.width = "0%";
-  progressContainer.classList.remove("active");
-  downloads.classList.add("hidden");
 };
 
 /* ---------- downloads ---------- */
 
-downloadTxt.onclick = () =>
-  save(new Blob([outputText.value]), "translation.txt");
-
-downloadDocx.onclick = async () => {
-  const paragraphs = outputText.value.split("\n").map(t => new docx.Paragraph(t));
-  const doc = new docx.Document({ sections: [{ children: paragraphs }] });
-  save(await docx.Packer.toBlob(doc), "translation.docx");
+downloadTxt.onclick = () => {
+  save(new Blob([outputText.value], { type: "text/plain" }), "translation.txt");
 };
 
 downloadPdf.onclick = () => {
@@ -175,3 +216,6 @@ function save(blob, name) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// Initialize PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
