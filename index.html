@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DE → EN Translator</title>
+  <title>DE ↔ EN Translator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Fonts -->
@@ -12,25 +12,28 @@
 
   <link rel="stylesheet" href="style.css" />
 
-  <!-- File / export libraries -->
-  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <!-- PDF library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
 </head>
 
 <body>
   <div class="app">
 
     <header>
-      <h1>DE → EN Translator</h1>
+      <h1>DE ↔ EN Translator</h1>
       <div class="meta">
         <span id="charCount">0 chars</span>
-        <span id="eta">ETA: –</span>
+        <span id="eta">ETA: —</span>
       </div>
     </header>
 
     <section class="controls">
+      <div class="direction-toggle" id="directionToggle">
+        <span id="directionLabel">DE → EN</span>
+        <span>⇄</span>
+      </div>
+
       <select id="domainMode">
         <option value="general">General</option>
         <option value="technical">Technical</option>
@@ -39,7 +42,7 @@
 
       <label class="upload">
         Upload document
-        <input type="file" id="fileInput" accept=".txt,.docx,.pdf" />
+        <input type="file" id="fileInput" accept=".txt,.pdf" />
       </label>
 
       <button id="translateBtn">Translate</button>
@@ -47,12 +50,12 @@
 
     <section class="editor">
       <div>
-        <label>German</label>
-        <textarea id="inputText" placeholder="Paste German text here…"></textarea>
+        <label id="sourceLabel">German</label>
+        <textarea id="inputText" placeholder="Paste text here…"></textarea>
       </div>
 
       <div>
-        <label>English</label>
+        <label id="targetLabel">English</label>
         <textarea id="outputText" readonly placeholder="Translation will appear here…"></textarea>
       </div>
     </section>
@@ -62,13 +65,12 @@
     </div>
 
     <section class="downloads hidden" id="downloads">
-      <button id="downloadTxt">TXT</button>
-      <button id="downloadDocx">DOCX</button>
-      <button id="downloadPdf">PDF</button>
+      <button id="downloadTxt">Download TXT</button>
+      <button id="downloadPdf">Download PDF</button>
     </section>
 
     <footer>
-      Runs entirely in your browser. No data is stored.
+      AI-powered translation. No data is stored.
     </footer>
 
   </div>
