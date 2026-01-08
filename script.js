@@ -71,12 +71,11 @@ document.addEventListener('DOMContentLoaded', function() {
       inputText.placeholder = "Paste German text here…";
     }
     
-    // Clear output but keep input
     outputText.value = "";
     progressBar.style.width = "0%";
     progressContainer.classList.remove("active");
     downloads.classList.add("hidden");
-    fileInput.value = ""; // Reset file input
+    fileInput.value = "";
   });
 
   /* ---------- input handling ---------- */
@@ -215,10 +214,9 @@ document.addEventListener('DOMContentLoaded', function() {
     translateBtn.textContent = "Translate";
   });
 
-  /* ---------- FIXED: file upload ---------- */
+  /* ---------- file upload ---------- */
 
   fileInput.addEventListener('change', async (e) => {
-    // Get the selected file
     const file = e.target.files[0];
     if (!file) return;
 
@@ -227,12 +225,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let text = "";
 
     try {
-      // Read TXT files
       if (file.name.toLowerCase().endsWith(".txt")) {
         text = await file.text();
         console.log(`TXT file loaded: ${text.length} chars`);
       } 
-      // Read PDF files
       else if (file.name.toLowerCase().endsWith(".pdf")) {
         try {
           const arrayBuffer = await file.arrayBuffer();
@@ -241,7 +237,6 @@ document.addEventListener('DOMContentLoaded', function() {
           
           console.log(`PDF loaded: ${pdf.numPages} pages`);
           
-          // Extract text from all pages
           const textPromises = [];
           for (let i = 1; i <= pdf.numPages; i++) {
             textPromises.push(
@@ -268,19 +263,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      // Validate text content
       if (!text || text.trim().length === 0) {
         alert("The file appears to be empty. Please try a different file.");
         fileInput.value = "";
         return;
       }
 
-      // Update UI with extracted text
       inputText.value = text;
       charCount.textContent = `${text.length} chars`;
       eta.textContent = `ETA: ${estimateTime(text.length)}s`;
 
-      // Clear previous output
       outputText.value = "";
       progressBar.style.width = "0%";
       progressContainer.classList.remove("active");
@@ -295,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  /* ---------- downloads ---------- */
+  /* ---------- FIXED: downloads with proper PDF multi-page support ---------- */
 
   downloadTxt.addEventListener('click', () => {
     if (!outputText.value.trim()) {
@@ -315,9 +307,44 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF();
-      const lines = pdf.splitTextToSize(outputText.value, 180);
-      pdf.text(lines, 10, 10);
+      
+      // PDF settings
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      const maxWidth = pageWidth - (margin * 2);
+      const lineHeight = 7;
+      const maxLinesPerPage = Math.floor((pageHeight - margin * 2) / lineHeight);
+      
+      // Split text into lines that fit the page width
+      const lines = pdf.splitTextToSize(outputText.value, maxWidth);
+      
+      let currentPage = 1;
+      let currentLine = 0;
+      let yPosition = margin;
+      
+      console.log(`PDF Generation: ${lines.length} lines total, ~${maxLinesPerPage} lines per page`);
+      
+      // Add text with automatic page breaks
+      for (let i = 0; i < lines.length; i++) {
+        // Check if we need a new page
+        if (currentLine >= maxLinesPerPage && i < lines.length) {
+          pdf.addPage();
+          currentPage++;
+          yPosition = margin;
+          currentLine = 0;
+          console.log(`Added page ${currentPage}`);
+        }
+        
+        // Add the line
+        pdf.text(lines[i], margin, yPosition);
+        yPosition += lineHeight;
+        currentLine++;
+      }
+      
+      console.log(`PDF complete: ${currentPage} pages generated`);
       pdf.save("translation.pdf");
+      
     } catch (error) {
       console.error("PDF creation error:", error);
       alert("Error creating PDF. Please try downloading as TXT instead.");
