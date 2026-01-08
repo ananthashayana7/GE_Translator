@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ---------- helpers ---------- */
 
   function estimateTime(chars) {
-    return Math.ceil(chars / 500) * 1;
+    return Math.ceil(chars / 1000) * 0.5;
   }
 
   function resetUIState() {
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fileInput.value = "";
   }
 
-  function splitText(text, max = 500) {
+  function splitText(text, max = 1000) {
     const parts = [];
     let i = 0;
     while (i < text.length) {
@@ -57,8 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ---------- direction toggle ---------- */
 
   directionToggle.addEventListener('click', function() {
-    console.log("Toggle clicked, current direction:", currentDirection);
-    
     if (currentDirection === "de-en") {
       currentDirection = "en-de";
       directionLabel.textContent = "EN → DE";
@@ -73,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
       inputText.placeholder = "Paste German text here…";
     }
     
-    console.log("New direction:", currentDirection);
     resetUIState();
   });
 
@@ -91,27 +88,71 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  /* ---------- translation ---------- */
+  /* ---------- translation with multiple fallbacks ---------- */
 
-  async function translateChunk(text) {
+  async function translateChunk(text, retryCount = 0) {
     const [sourceLang, targetLang] = currentDirection.split("-");
     
-    // MyMemory Translation API (Free, No API Key Required)
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
-
+    // Method 1: Google Translate (Primary - Unlimited)
     try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
       const response = await fetch(url);
       const data = await response.json();
       
-      if (data.responseStatus === 200 || data.responseData) {
-        return data.responseData.translatedText;
-      } else {
-        throw new Error("Translation failed");
+      if (data && data[0]) {
+        const translated = data[0].map(item => item[0]).join('');
+        return translated;
       }
     } catch (error) {
-      console.error("Translation error:", error);
-      throw error;
+      console.log("Google Translate failed, trying backup...");
     }
+
+    // Method 2: Lingva Translate (Backup 1 - Unlimited)
+    try {
+      const url = `https://lingva.ml/api/v1/${sourceLang}/${targetLang}/${encodeURIComponent(text)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data && data.translation) {
+        return data.translation;
+      }
+    } catch (error) {
+      console.log("Lingva Translate failed, trying next backup...");
+    }
+
+    // Method 3: MyMemory (Backup 2)
+    try {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.responseData && data.responseData.translatedText) {
+        return data.responseData.translatedText;
+      }
+    } catch (error) {
+      console.log("MyMemory failed, trying final backup...");
+    }
+
+    // Method 4: Translate.com API (Backup 3)
+    try {
+      const url = `https://api.translate.com/translate/v1/mt?source=${sourceLang}&target=${targetLang}&text=${encodeURIComponent(text)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data && data.translation) {
+        return data.translation;
+      }
+    } catch (error) {
+      console.log("All translation services failed");
+    }
+
+    // If all methods fail and we haven't retried yet
+    if (retryCount < 2) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return translateChunk(text, retryCount + 1);
+    }
+
+    throw new Error("All translation services failed");
   }
 
   async function translateAll(text) {
@@ -130,11 +171,13 @@ document.addEventListener('DOMContentLoaded', function() {
           progressBar.style.width = `${Math.round((completed / chunks.length) * 100)}%`;
         });
         
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Small delay between chunks for stability
+        if (completed < chunks.length) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
       } catch (error) {
         console.error("Error translating chunk:", error);
-        results.push("[Translation error]");
+        results.push(chunk); // Keep original text if translation fails
         completed++;
       }
     }
@@ -144,8 +187,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   translateBtn.addEventListener('click', async () => {
     if (!inputText.value.trim()) return;
-
-    console.log("Starting translation in direction:", currentDirection);
 
     translateBtn.disabled = true;
     progressBar.style.width = "0%";
@@ -157,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const result = await translateAll(inputText.value);
       outputText.value = result;
       downloads.classList.remove("hidden");
-      console.log("Translation completed successfully");
     } catch (error) {
       outputText.value = "Translation failed. Please check your internet connection and try again.";
       console.error("Translation error:", error);
@@ -225,6 +265,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initialize PDF.js worker
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-  console.log("Translator initialized, direction:", currentDirection);
 });
