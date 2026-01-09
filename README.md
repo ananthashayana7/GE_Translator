@@ -1,6 +1,6 @@
-# DE → EN Translator
+# DE <-> EN Translator
 
-A lightweight, browser-based **German → English translation tool** built for quick internal use.
+A lightweight, browser-based **German → English and vice-versa translation tool** built for quick internal use.
 
 The application runs entirely on the client side, requires **no API keys**, **no login**, and can be hosted as a **static site** (for example, on GitHub Pages). It supports translating pasted text as well as uploaded documents.
 
@@ -8,15 +8,13 @@ The application runs entirely on the client side, requires **no API keys**, **no
 
 ##  Features
 
-DE → EN German to English translation
+DE <-> EN German to English translation
 - Paste text directly into the editor
 - Upload documents:
   - `.txt`
-  - `.docx`
   - `.pdf`
 - Download translated output as:
   - `.txt`
-  - `.docx`
   - `.pdf`
 - Handles large documents automatically (no character limit)
 - Chunked translation to avoid API size limits
@@ -28,7 +26,7 @@ DE → EN German to English translation
 ## How It Works
 
 - The app runs entirely in the browser using HTML, CSS, and JavaScript.
-- German text is split into smaller chunks and translated sequentially.
+- Entered text is split into smaller chunks and translated sequentially.
 - A free public translation service is used behind the scenes.
 - Uploaded documents are parsed locally in the browser before translation.
 - Translated content can be downloaded in multiple formats.
